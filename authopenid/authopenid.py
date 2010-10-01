@@ -204,8 +204,8 @@ class AuthOpenIdPlugin(Component):
         authname = None
         if req.remote_user:
             authname = req.remote_user
-        elif req.incookie.has_key('trac_auth'):
-            authname = self._get_name_for_cookie(req, req.incookie['trac_auth'])
+        elif req.incookie.has_key('trac_auth_openid'):
+            authname = self._get_name_for_cookie(req, req.incookie['trac_auth_openid'])
 
         if not authname:
             return None
@@ -507,10 +507,9 @@ class AuthOpenIdPlugin(Component):
             if allowed:
                 cookie = hex_entropy()
 
-                req.authname = info.identity_url
-                req.outcookie['trac_auth'] = cookie
-                req.outcookie['trac_auth']['path'] = req.href()
-                req.outcookie['trac_auth']['expires'] = self.trac_auth_expires
+                req.outcookie['trac_auth_openid'] = cookie
+                req.outcookie['trac_auth_openid']['path'] = req.href()
+                req.outcookie['trac_auth_openid']['expires'] = self.trac_auth_expires
 
                 if reg_info and reg_info.has_key('fullname') and len(reg_info['fullname']) > 0:
                     req.session['name'] = reg_info['fullname']
@@ -519,8 +518,14 @@ class AuthOpenIdPlugin(Component):
 
                 self._commit_session(session, req) 
 
+                if reg_info and reg_info['email']:
+                  remote_user = reg_info['email'];
+                remote_user = "openid:%s" % (remote_user,)
+
                 if self.combined_username and req.session['name']:
                     remote_user = '%s <%s>' % (req.session['name'], remote_user)
+
+                req.authname = remote_user
 
                 db = self.env.get_db_cnx()
                 cursor = db.cursor()
@@ -603,9 +608,9 @@ class AuthOpenIdPlugin(Component):
         """Instruct the user agent to drop the auth cookie by setting the
         "expires" property to a date in the past.
         """
-        req.outcookie['trac_auth'] = ''
-        req.outcookie['trac_auth']['path'] = req.href()
-        req.outcookie['trac_auth']['expires'] = -10000
+        req.outcookie['trac_auth_openid'] = ''
+        req.outcookie['trac_auth_openid']['path'] = req.href()
+        req.outcookie['trac_auth_openid']['expires'] = -10000
 
     def _get_name_for_cookie(self, req, cookie):
         db = self.env.get_db_cnx()
@@ -626,8 +631,8 @@ class AuthOpenIdPlugin(Component):
             cursor.execute("UPDATE auth_cookie SET time=%s "
                            "WHERE cookie=%s AND name=%s",
                            (int(time.time()), cookie.value, row[0]))
-            req.outcookie['trac_auth'] = cookie.value
-            req.outcookie['trac_auth']['path'] = req.href()
-            req.outcookie['trac_auth']['expires'] = self.trac_auth_expires
+            req.outcookie['trac_auth_openid'] = cookie.value
+            req.outcookie['trac_auth_openid']['path'] = req.href()
+            req.outcookie['trac_auth_openid']['expires'] = self.trac_auth_expires
 
         return row[0]
