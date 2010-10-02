@@ -526,9 +526,9 @@ class AuthOpenIdPlugin(Component):
                 self._commit_session(session, req) 
 
                 if req.session.has_key('name'):
-                  remote_user = req.session['name']
+                    remote_user = req.session['name']
                 elif req.session.has_key('email'):
-                  remote_user = req.session['email']
+                    remote_user = req.session['email']
                 remote_user = plaintext("openid:%s" % (remote_user,), keeplinebreaks=False)
 
                 if self.combined_username and req.session['name']:
@@ -538,23 +538,23 @@ class AuthOpenIdPlugin(Component):
                 collisions = 0
                 cremote_user = remote_user
                 while True:
-                  ds = DetachedSession(self.env, remote_user)
-                  if not ds.last_visit:
-                    # New session
-                    break
-                  if not ds.has_key(self.openid_session_iurl_key):
-                    # Old session, without the iurl set
-                    # Save the iurl then (bascially adopt the session)
-                    ds[self.openid_session_iurl_key] = info.identity_url
-                    ds.save()
-                    break
-                  if ds[self.openid_session_iurl_key] == info.identity_url:
-                    # No collision
-                    break  
-                  # We got us a collision
-                  # Make the thing unique
-                  collisions += 1
-                  remote_user = "%s (%d)" % (cremote_user, collisions)
+                    ds = DetachedSession(self.env, remote_user)
+                    if not ds.last_visit:
+                        # New session
+                        break
+                    if not ds.has_key(self.openid_session_iurl_key):
+                        # Old session, without the iurl set
+                        # Save the iurl then (bascially adopt the session)
+                        ds[self.openid_session_iurl_key] = info.identity_url
+                        ds.save()
+                        break
+                    if ds[self.openid_session_iurl_key] == info.identity_url:
+                        # No collision
+                        break  
+                    # We got us a collision
+                    # Make the thing unique
+                    collisions += 1
+                    remote_user = "%s (%d)" % (cremote_user, collisions)
 
                 req.authname = remote_user
 
