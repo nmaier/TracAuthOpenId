@@ -25,6 +25,7 @@ from trac.config import Option, BoolOption, IntOption
 from trac.web.chrome import INavigationContributor, ITemplateProvider, add_stylesheet, add_script
 from trac.env import IEnvironmentSetupParticipant
 from trac.web.main import IRequestHandler, IAuthenticator
+from trac.web.session import DetachedSession
 try:
     from acct_mgr.web_ui import LoginModule
 except ImportError:
@@ -63,6 +64,7 @@ class OpenIdLogger:
 class AuthOpenIdPlugin(Component):
 
     openid_session_key = 'openid_session_data'
+    openid_session_iurl_key = 'openid_session_iurl'
 
     implements(INavigationContributor, IRequestHandler, ITemplateProvider, IAuthenticator, IEnvironmentSetupParticipant)
 
@@ -215,9 +217,7 @@ class AuthOpenIdPlugin(Component):
         if not authname:
             return None
 
-        authname = authname.lower()
-
-        return authname
+        return authname.lower().lower()
 
     # INavigationContributor methods
     def get_active_navigation_item(self, req):
@@ -517,6 +517,7 @@ class AuthOpenIdPlugin(Component):
                 req.outcookie['trac_auth_openid']['path'] = req.href()
                 req.outcookie['trac_auth_openid']['expires'] = self.trac_auth_expires
 
+                req.session[self.openid_session_iurl_key] = info.identity_url
                 if reg_info and reg_info.has_key('fullname') and len(reg_info['fullname']) > 0:
                     req.session['name'] = plaintext(reg_info['fullname'], keeplinebreaks=False)
                 if reg_info and reg_info.has_key('email') and len(reg_info['email']) > 0:
@@ -524,12 +525,36 @@ class AuthOpenIdPlugin(Component):
 
                 self._commit_session(session, req) 
 
-                if reg_info and reg_info['email']:
-                  remote_user = reg_info['email']
+                if req.session.has_key('name'):
+                  remote_user = req.session['name']
+                elif req.session.has_key('email'):
+                  remote_user = req.session['email']
                 remote_user = plaintext("openid:%s" % (remote_user,), keeplinebreaks=False)
 
                 if self.combined_username and req.session['name']:
                     remote_user = plaintext('%s <%s>' % (req.session['name'], remote_user), keeplinebreaks=False)
+
+                # Check if we generated a colliding remote_user and make the user unique
+                collisions = 0
+                cremote_user = remote_user
+                while True:
+                  ds = DetachedSession(self.env, remote_user)
+                  if not ds.last_visit:
+                    # New session
+                    break
+                  if not ds.has_key(self.openid_session_iurl_key):
+                    # Old session, without the iurl set
+                    # Save the iurl then (bascially adopt the session)
+                    ds[self.openid_session_iurl_key] = info.identity_url
+                    ds.save()
+                    break
+                  if ds[self.openid_session_iurl_key] == info.identity_url:
+                    # No collision
+                    break  
+                  # We got us a collision
+                  # Make the thing unique
+                  collisions += 1
+                  remote_user = "%s (%d)" % (cremote_user, collisions)
 
                 req.authname = remote_user
 
