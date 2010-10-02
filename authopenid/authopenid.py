@@ -33,6 +33,7 @@ except ImportError:
 from genshi.builder import tag
 
 from trac.util import hex_entropy
+from trac.util.html import plaintext
 from openid.store.sqlstore import MySQLStore, PostgreSQLStore, SQLiteStore
 from openid.store.memstore import MemoryStore
 
@@ -517,18 +518,18 @@ class AuthOpenIdPlugin(Component):
                 req.outcookie['trac_auth_openid']['expires'] = self.trac_auth_expires
 
                 if reg_info and reg_info.has_key('fullname') and len(reg_info['fullname']) > 0:
-                    req.session['name'] = reg_info['fullname']
+                    req.session['name'] = plaintext(reg_info['fullname'], keeplinebreaks=False)
                 if reg_info and reg_info.has_key('email') and len(reg_info['email']) > 0:
-                    req.session['email'] = reg_info['email']
+                    req.session['email'] = plaintext(reg_info['email'], keeplinebreaks=False)
 
                 self._commit_session(session, req) 
 
                 if reg_info and reg_info['email']:
-                  remote_user = reg_info['email'];
-                remote_user = "openid:%s" % (remote_user,)
+                  remote_user = reg_info['email']
+                remote_user = plaintext("openid:%s" % (remote_user,), keeplinebreaks=False)
 
                 if self.combined_username and req.session['name']:
-                    remote_user = '%s <%s>' % (req.session['name'], remote_user)
+                    remote_user = plaintext('%s <%s>' % (req.session['name'], remote_user), keeplinebreaks=False)
 
                 req.authname = remote_user
 
