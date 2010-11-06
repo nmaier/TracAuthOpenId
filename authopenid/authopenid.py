@@ -211,8 +211,8 @@ class AuthOpenIdPlugin(Component):
         if req.remote_user:
             authname = req.remote_user
             self.env.log.debug('authenticate. remote_user: %s' % authname)
-        elif req.incookie.has_key('trac_auth'):
-            authname = self._get_name_for_cookie(req, req.incookie['trac_auth'])
+        elif req.incookie.has_key('trac_auth_openid'):
+            authname = self._get_name_for_cookie(req, req.incookie['trac_auth_openid'])
             self.env.log.debug('authenticate. cookie: %s' % authname)
 
         if not authname:
@@ -515,9 +515,9 @@ class AuthOpenIdPlugin(Component):
             if allowed:
                 cookie = hex_entropy()
 
-                req.outcookie['trac_auth'] = cookie
-                req.outcookie['trac_auth']['path'] = req.href()
-                req.outcookie['trac_auth']['expires'] = self.trac_auth_expires
+                req.outcookie['trac_auth_openid'] = cookie
+                req.outcookie['trac_auth_openid']['path'] = req.href()
+                req.outcookie['trac_auth_openid']['expires'] = self.trac_auth_expires
 
                 req.session[self.openid_session_identity_url] = info.identity_url
                 if reg_info and reg_info.has_key('fullname') and len(reg_info['fullname']) > 0:
@@ -641,10 +641,9 @@ class AuthOpenIdPlugin(Component):
         """Instruct the user agent to drop the auth cookie by setting the
         "expires" property to a date in the past.
         """
-        req.outcookie['trac_auth'] = ''
-        req.outcookie['trac_auth']['path'] = req.href()
-        req.outcookie['trac_auth']['expires'] = -10000
-        self.env.log.debug('trac_auth cookie expired.')
+        req.outcookie['trac_auth_openid'] = ''
+        req.outcookie['trac_auth_openid']['path'] = req.href()
+        req.outcookie['trac_auth_openid']['expires'] = -10000
 
     def _get_name_for_cookie(self, req, cookie):
         db = self.env.get_db_cnx()
@@ -665,8 +664,8 @@ class AuthOpenIdPlugin(Component):
             cursor.execute("UPDATE auth_cookie SET time=%s "
                            "WHERE cookie=%s AND name=%s",
                            (int(time.time()), cookie.value, row[0]))
-            req.outcookie['trac_auth'] = cookie.value
-            req.outcookie['trac_auth']['path'] = req.href()
-            req.outcookie['trac_auth']['expires'] = self.trac_auth_expires
+            req.outcookie['trac_auth_openid'] = cookie.value
+            req.outcookie['trac_auth_openid']['path'] = req.href()
+            req.outcookie['trac_auth_openid']['expires'] = self.trac_auth_expires
 
         return row[0]
